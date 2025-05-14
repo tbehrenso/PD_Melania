@@ -3,16 +3,25 @@ library(Seurat)
 library(patchwork)
 library(hdf5r)
 library(ggplot2)
+library(readxl)
+source('Scripts/PD_functions.R')
 
 SCTRANSFORM <- FALSE
+SOUPX <- FALSE
 
 # Load the SNCA dataset
-SNCA_out <- Read10X_h5(filename = "Results/SNCA_outs/raw_feature_bc_matrix.h5")
-SNCA_PLX_out <- Read10X_h5(filename = "Results/SNCA_PLX_outs/raw_feature_bc_matrix.h5")
+SNCA_out <- Read10X_h5(filename = "Results/SNCA_outs/filtered_feature_bc_matrix.h5")
+SNCA_PLX_out <- Read10X_h5(filename = "Results/SNCA_PLX_outs/filtered_feature_bc_matrix.h5")
 
 # Initialize the Seurat object with the raw (non-normalized data).
 SNCA <- CreateSeuratObject(counts = SNCA_out, project = "SNCA", min.cells = 3, min.features = 500)
 SNCA_PLX <- CreateSeuratObject(counts = SNCA_PLX_out, project = "SNCA_PLX", min.cells = 3, min.features = 500)
+
+# LOad soupX Seurat objects
+if(SOUPX){
+  SNCA <- SNCA_adjusted
+  SNCA_PLX <- SNCA_PLX_adjusted
+}
 
 # Merge (without integration)
 SYN_merged <- merge(x = SNCA, y = SNCA_PLX)
@@ -52,8 +61,8 @@ options(future.globals.maxSize = 75000 * 1024^2)
 
 # Integrate layers
 if(SCTRANSFORM){
-  SYN_merged <- IntegrateLayers(object = SYN_merged, method = RPCAIntegration, orig.reduction = "pca", new.reduction = "integrated.rpca", assay='SCT',
-                                # normalization.method = 'SCT',
+  SYN_merged <- IntegrateLayers(object = SYN_merged, method = RPCAIntegration, orig.reduction = "pca", new.reduction = "integrated.rpca", normalization.method = 'SCT',
+#                                assay='SCT',
                                 verbose = FALSE)
   
   
@@ -67,16 +76,22 @@ if(SCTRANSFORM){
 }
 
 
-SYN_merged <- FindNeighbors(SYN_merged, reduction = "integrated.rpca", dims = 1:30)
-SYN_merged <- FindClusters(SYN_merged, resolution = 1)
+SYN_merged <- FindNeighbors(SYN_merged, reduction = "integrated.rpca", dims = 1:20)
+SYN_merged <- FindClusters(SYN_merged, resolution = 2.2)
 
-SYN_merged <- RunUMAP(SYN_merged, dims= 1:30, reduction = 'integrated.rpca')
+SYN_merged <- RunUMAP(SYN_merged, dims= 1:20, reduction = 'integrated.rpca')
+
+if(SCTRANSFORM){
+  # run to be compatible with FindMarkers
+  SYN_merged <- PrepSCTFindMarkers(SYN_merged)
+}
+
 
 
 #### Finding differentially expressed features (cluster biomarkers) (part of STANDARD workflow)
 
 # find all markers for clusters
-clusterX.markers <- FindMarkers(SYN_merged, ident.1 = '25', only.pos=T)
+clusterX.markers <- FindMarkers(SYN_merged, ident.1 = '8', only.pos=T)
 head(clusterX.markers, n = 50)
 
 if(F){
@@ -147,21 +162,24 @@ p2 + p4
 
 
 # For Base Clusters
+seurat_clusters_factor <- factor(SYN_merged$seurat_clusters)
+
 SYN_merged$celltype.stim <- paste(Idents(SYN_merged), SYN_merged$orig.ident, sep = "_")
-Idents(SYN_merged) <- 'celltype.stim'
-condition.response <- FindMarkers(SYN_merged, ident.1 = "29_SNCA", ident.2 = "29_SNCA_PLX", verbose = FALSE)
+Idents(SYN_merged) <- factor(SYN_merged$celltype.stim, levels = c(rbind(paste0(c(0:42),'_SNCA'), paste0(c(0:42),'_SNCA_PLX'))))
+#Idents(SYN_merged) <- 'celltype.stim'
+condition.response <- FindMarkers(SYN_merged, ident.1 = "5_SNCA", ident.2 = "5_SNCA_PLX", verbose = FALSE)
 head(condition.response, n = 30)
 
 if(F){
   library(openxlsx)
   
-  for(cluster in 26:35){
+  for(cluster in 0:25){
     print(cluster)
     
     condition.response <- FindMarkers(SYN_merged, ident.1 = paste0(cluster,'_SNCA'), ident.2 = paste0(cluster,'_SNCA_PLX'), verbose = FALSE)
     
     #write.xlsx(condition.response, paste0('Results/SvSPLX/SvSPLX_', cluster, '.xlsx'))
-    write.csv(condition.response, file = paste0('Results/SvSPLX/SvSPLX_', cluster, '.csv'), quote = F)
+    write.csv(condition.response, file = paste0('Results/SvSPLX/v4_SvSPLX_', cluster, '.csv'), quote = F)
   }
 }
 
@@ -179,6 +197,10 @@ library(SingleR)
 library(celldex)
 library(SingleCellExperiment)
 
+if(SCTRANSFORM){
+  SYN_merged <- JoinLayers(SYN_merged, assay = 'RNA')
+}
+
 # load reference dataset
 immgen_ref <- celldex::ImmGenData()
 mouserna_ref <- celldex::MouseRNAseqData()
@@ -186,17 +208,15 @@ mouserna_ref <- celldex::MouseRNAseqData()
 # convert Seurat object to SCE object (using raw clusters)
 SYN_sce <- as.SingleCellExperiment(SYN_merged)
 
-# SingleR annotation
-pred.cnts <- SingleR::SingleR(test = SYN_sce, ref = immgen_ref, labels = immgen_ref$label.main)
-pred.cnts.fine <- SingleR::SingleR(test = SYN_sce, ref = immgen_ref, labels = immgen_ref$label.fine)
-
 # add labels to Seurat object
+pred.cnts <- SingleR::SingleR(test = SYN_sce, ref = immgen_ref, labels = immgen_ref$label.main)
 lbls.keep <- table(pred.cnts$labels)>10
 SYN_merged$SingleR.labels <- ifelse(lbls.keep[pred.cnts$labels], pred.cnts$labels, 'Other')
 DimPlot(SYN_merged, reduction='umap', group.by='SingleR.labels')
 
 # add labels to Seurat object (fine)
-lbls.keep.fine <- table(pred.cnts.fine$labels)>100
+pred.cnts.fine <- SingleR::SingleR(test = SYN_sce, ref = immgen_ref, labels = immgen_ref$label.fine)
+lbls.keep.fine <- table(pred.cnts.fine$labels)>10
 SYN_merged$SingleR.labels.fine <- ifelse(lbls.keep.fine[pred.cnts.fine$labels], pred.cnts.fine$labels, 'Other')
 DimPlot(SYN_merged, reduction='umap', group.by='SingleR.labels.fine', split.by='orig.ident')
 
