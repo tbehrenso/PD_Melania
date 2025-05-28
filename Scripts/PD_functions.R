@@ -43,3 +43,49 @@ hierarchical_clustering_scaled <- function(gene_subset, idents_subset){
   
   return(gene_order)
 }
+
+
+
+# ------------------------------------------------------------------------
+# Remove RP from markers
+# ------------------------------------------------------------------------
+
+remove_Rp_from_markers <- function(markers_df){
+  markers_df <- markers_df[!grepl('Rp', rownames(markers_df)),]
+  
+  return(markers_df)
+}
+
+# ------------------------------------------------------------------------
+# Create various Seurat objects
+# ------------------------------------------------------------------------
+
+add_cluster_from_barcodes <- function(seurat_object, barcodes, new_cluster_name){
+  new_clusters <- as.character(Idents(seurat_object))
+  new_clusters[colnames(seurat_object) %in% barcodes] <- new_cluster_name
+  Idents(seurat_object) <- new_clusters
+  
+  return(seurat_object)
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

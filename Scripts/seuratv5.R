@@ -113,14 +113,26 @@ table(SYN_merged@meta.data$RNA_snn_res.1, SYN_merged@meta.data$orig.ident)
 #  Annotate cell types
 
 # new names (5 per row)
-new.cluster.ids <- c('M1 Macrophage',
-                     'CD4','M1 Macrophage','CD8','Plasma','CD8',
-                     'M1 Macrophage','B-cells','Oligodendrocytes','Proliferating','NK',
-                     'Dendritic','CD4','M1 Macrophage','Microglia','Dendritic',
-                     'Endothilial','Macrophage??','GC B','Plasma','Granulocyte',
-                     'UNKNOWN','UNKNOWN','Monocyte','Th2','M2 Macrophage',
-                     'B-cells','Dendritic','Pericyte','Astrocyte','NPC',
-                     'TGD Il17','Ependymal','Mast Cell','Dendritic','UNKNOWN')
+new.cluster.ids <- c('Microglia',
+                     'CD8','Microglia','B-cells','Plasma Cells','Microglia',
+                     'CD4','CD4','CD8','NA','Mo/M\u03D5',
+                     'Treg','NK','Microglia','Oligodendrocytes','DC',
+                     'Mo/M\u03D5','Mo/M\u03D5','Microglia','Plasma Cells','Endothelial',
+                     'DC','Mo/M\u03D5','Oligodendrocytes','CD4','NA',
+                     'Neutrophils','Mo/M\u03D5','Plasma Cells','Mo/M\u03D5','B-cells',
+                     'DC','DC','NA','NA','Pericytes',
+                     'NA','NA','Microglia','Mast Cells','B-cells',
+                     'Ependymal','Erythrocytes')
+new.cluster.ids <- c('Microglia',
+                     'CD8','Microglia','B-cells','Plasma Cells','Microglia',
+                     'CD4','CD4','CD8','NA','Mo/M\u03D5',
+                     'Treg','NK','Microglia','Oligodendrocytes','DC',
+                     'Mo/M\u03D5','Mo/M\u03D5','Microglia','Plasma Cells','Endothelial',
+                     'DC','Mo/M\u03D5','Oligodendrocytes','CD4','NA',
+                     'Neutrophils','Mo/M\u03D5','Plasma Cells','PLX-M\u03D5','B-cells',
+                     'DC','DC','NA','NA','Pericytes',
+                     'NA','NA','Microglia','Mast Cells','B-cells',
+                     'Ependymal','Erythrocytes')
 names(new.cluster.ids) <- levels(SYN_merged)
 SYN_merged_relabeled <- RenameIdents(SYN_merged, new.cluster.ids)
 DimPlot(SYN_merged_relabeled, reduction = "umap", label = TRUE, pt.size = 0.5) + NoLegend()
@@ -173,7 +185,7 @@ head(condition.response, n = 30)
 if(F){
   library(openxlsx)
   
-  for(cluster in 0:25){
+  for(cluster in 0:42){
     print(cluster)
     
     condition.response <- FindMarkers(SYN_merged, ident.1 = paste0(cluster,'_SNCA'), ident.2 = paste0(cluster,'_SNCA_PLX'), verbose = FALSE)

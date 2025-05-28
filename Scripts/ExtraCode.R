@@ -159,6 +159,53 @@ FeaturePlot(SYN_merged,
 
 
 
+# ------------------------------------------------------------------------
+# Steps for Getting X vs Y marker excels
+# ------------------------------------------------------------------------
+
+clusterx_markers <- FindMarkers(SYN_merged, ident.1=c(29), ident.2=c(0,2,5,10,13,16,17,18,22,27,38))
+
+clusterx_markers <- remove_Rp_from_markers(clusterx_markers)
+
+clusterx_markers <- clusterx_markers[abs(clusterx_markers$pct.1-clusterx_markers$pct.2)>0.1,]
+
+clusterx_markers$p_val <- NULL
+
+write.csv(clusterx_markers, '/Users/tbehr/Desktop/29_v_myeloid.csv')
+
+
+# ------------------------------------------------------------------------
+# Import Barcodes and Define as Separate Cluster
+# ------------------------------------------------------------------------
+# (mostly converted into add_cluster_from_barcodes() function)
+
+barcodes_th2 <- read.csv('data/Barcodes_Th2.csv', header = T)
+
+new_clusters <- as.character(Idents(SYN_merged_relabeled))
+new_clusters[colnames(SYN_merged_relabeled) %in% barcodes_th2$Barcode] <- 'Th2'
+Idents(SYN_merged_relabeled) <- new_clusters
+
+
+Idents(SYN_merged_relabeled)[colnames(SYN_merged_relabeled) %in% barcodes_th2$Barcode] <- 'Th2'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
