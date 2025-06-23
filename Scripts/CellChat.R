@@ -31,14 +31,14 @@ cellChat_SNCA <- createCellChat(object = SYN_SNCA, group.by = "clusters_renamed"
 cellChat_PLX <- createCellChat(object = SYN_PLX, group.by = "clusters_renamed", assay = "RNA")
 
 # ---------------------------------------------------------------
-# For analyzing a single dataset
+# For analyzing a single dataset (run for each sample separately before combining objects)
 # ---------------------------------------------------------------
 
 # SELECT SAMPLE
 cellChat <- cellChat_PLX
 
 # Set ligand-receptor interaction database
-CellChatDB <- CellChatDB.mouse      
+CellChatDB <- f      
 # exclude Non-protin signalling (can use different subset)
 CellChatDB.use <- subsetDB(CellChatDB)
 
@@ -111,6 +111,9 @@ setwd(data.dir)
 
 cellChat_SNCA <- netAnalysis_computeCentrality(cellChat_SNCA)
 cellChat_PLX<- netAnalysis_computeCentrality(cellChat_PLX)
+
+netAnalysis_signalingRole_network(cellChat_SNCA, signaling = c('MIF'))
+netAnalysis_signalingRole_network(cellChat_PLX, signaling = c('MIF'))
 
 # Merge cellchat objects of each condition
 object.list <- list(SNCA = cellChat_SNCA, PLX = cellChat_PLX)
